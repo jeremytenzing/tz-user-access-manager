@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace UserAccessManager\Access;
 
 use Exception;
+use Tz\WordPress\Tools\TZRedis;
 use UserAccessManager\Config\MainConfig;
 use UserAccessManager\Database\Database;
 use UserAccessManager\Object\ObjectHandler;
@@ -283,33 +284,40 @@ class AccessHandler
             $this->excludedPosts = [];
         }
 
-        if ($this->excludedPosts === null) {
-            $noneHiddenPostTypes = $this->getNoneHiddenPostTypes();
-            $excludedPosts = $this->getExcludedObjects(ObjectHandler::GENERAL_POST_OBJECT_TYPE, $noneHiddenPostTypes);
+        if(TZRedis::exists('getExcludedPosts')) {
+            $this->excludedPosts = TZRedis::get('getExcludedPosts', true);
+        } else {
 
-            if ($this->mainConfig->authorsHasAccessToOwn() === true) {
-                $query = $this->database->prepare(
-                    "SELECT ID FROM {$this->database->getPostsTable()}
-                    WHERE post_author = %d",
-                    $this->wordpress->getCurrentUser()->ID
-                );
+            if ($this->excludedPosts === null) {
+                $noneHiddenPostTypes = $this->getNoneHiddenPostTypes();
+                $excludedPosts = $this->getExcludedObjects(ObjectHandler::GENERAL_POST_OBJECT_TYPE, $noneHiddenPostTypes);
 
-                $ownPosts = array_filter(
-                    (array) $this->database->getResults($query),
-                    function ($ownPost) {
-                        return isset($ownPost->ID);
+                if ($this->mainConfig->authorsHasAccessToOwn() === true) {
+                    $query = $this->database->prepare(
+                        "SELECT ID FROM {$this->database->getPostsTable()}
+                        WHERE post_author = %d",
+                        $this->wordpress->getCurrentUser()->ID
+                    );
+
+                    $ownPosts = array_filter(
+                        (array) $this->database->getResults($query),
+                        function ($ownPost) {
+                            return isset($ownPost->ID);
+                        }
+                    );
+                    $ownPostIds = [];
+
+                    foreach ($ownPosts as $ownPost) {
+                        $ownPostIds[$ownPost->ID] = $ownPost->ID;
                     }
-                );
-                $ownPostIds = [];
 
-                foreach ($ownPosts as $ownPost) {
-                    $ownPostIds[$ownPost->ID] = $ownPost->ID;
+                    $excludedPosts = array_diff_key($excludedPosts, $ownPostIds);
                 }
 
-                $excludedPosts = array_diff_key($excludedPosts, $ownPostIds);
+                $this->excludedPosts = $excludedPosts;
+                TZRedis::set('getExcludedPosts', serialize($excludedPosts));
             }
 
-            $this->excludedPosts = $excludedPosts;
         }
 
         return $this->excludedPosts;

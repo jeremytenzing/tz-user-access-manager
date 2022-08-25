@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace UserAccessManager\UserGroup;
 
 use Exception;
+use Tz\WordPress\Tools\TZRedis;
 use UserAccessManager\Config\WordpressConfig;
 use UserAccessManager\Database\Database;
 use UserAccessManager\Object\ObjectHandler;
@@ -224,23 +225,29 @@ class UserGroupHandler
      */
     public function getUserGroupsForObject(string $objectType, $objectId, bool $ignoreDates = false): array
     {
+
         if ($this->objectHandler->isValidObjectType($objectType) === false) {
             return [];
         }
 
-        if (isset($this->objectUserGroups[$ignoreDates][$objectType][$objectId]) === false) {
-            $objectUserGroups = [];
-            $userGroups = $this->getFullUserGroups();
+        if(TZRedis::exists('getUserGroupsForObject_'.$objectType."_".$objectId)) {
+            $this->objectUserGroups[$ignoreDates][$objectType][$objectId] = TZRedis::get('getUserGroupsForObject_'.$objectType."_".$objectId, true);
+        } else {
+            if (isset($this->objectUserGroups[$ignoreDates][$objectType][$objectId]) === false) {
+                $objectUserGroups = [];
+                $userGroups = $this->getFullUserGroups();
 
-            foreach ($userGroups as $userGroup) {
-                $userGroup->setIgnoreDates($ignoreDates);
+                foreach ($userGroups as $userGroup) {
+                    $userGroup->setIgnoreDates($ignoreDates);
 
-                if ($userGroup->isObjectMember($objectType, $objectId) === true) {
-                    $objectUserGroups[$userGroup->getId()] = $userGroup;
+                    if ($userGroup->isObjectMember($objectType, $objectId) === true) {
+                        $objectUserGroups[$userGroup->getId()] = $userGroup;
+                    }
                 }
-            }
 
-            $this->objectUserGroups[$ignoreDates][$objectType][$objectId] = $objectUserGroups;
+                $this->objectUserGroups[$ignoreDates][$objectType][$objectId] = $objectUserGroups;
+            }
+            TZRedis::set('getUserGroupsForObject_'.$objectType."_".$objectId, serialize($objectUserGroups));
         }
 
         return $this->objectUserGroups[$ignoreDates][$objectType][$objectId];
