@@ -311,6 +311,7 @@ class UserGroupHandler
         }
     }
 
+    
     /**
      * Returns the user groups for the user.
      * @return AbstractUserGroup[]|null
@@ -321,71 +322,36 @@ class UserGroupHandler
         if ($this->userHandler->checkUserAccess(UserHandler::MANAGE_USER_GROUPS_CAPABILITY) === true) {
             return $this->getUserGroups();
         }
+        $currentUser = $this->wordpress->getCurrentUser();
+        
+        if(TZRedis::exists('getUserGroupsForUser_'.$currentUser->ID)) {
+            $this->userGroupsForUser  = TZRedis::get('getUserGroupsForUser_'.$currentUser->ID, true);
+            //error_log('getUserGroupsForUser_'.$currentUser->ID); 
+        } else {
+            if ($this->userGroupsForUser === null) {
+                $userGroupsForUser = $this->getUserGroupsForObject(
+                    ObjectHandler::GENERAL_USER_OBJECT_TYPE,
+                    $currentUser->ID
+                );
 
-        if ($this->userGroupsForUser === null) {
-            $currentUser = $this->wordpress->getCurrentUser();
-            $userGroupsForUser = $this->getUserGroupsForObject(
-                ObjectHandler::GENERAL_USER_OBJECT_TYPE,
-                $currentUser->ID
-            );
+                $this->assignDynamicUserGroupsForUser($currentUser, $userGroupsForUser);
+                $userGroups = $this->getUserGroups();
 
-            $this->assignDynamicUserGroupsForUser($currentUser, $userGroupsForUser);
-            $userGroups = $this->getUserGroups();
-
-            foreach ($userGroups as $userGroup) {
-                if (isset($userGroupsForUser[$userGroup->getId()]) === false
-                    && $this->checkUserGroupAccess($userGroup) === true
-                ) {
-                    $userGroupsForUser[$userGroup->getId()] = $userGroup;
+                foreach ($userGroups as $userGroup) {
+                    if (isset($userGroupsForUser[$userGroup->getId()]) === false
+                        && $this->checkUserGroupAccess($userGroup) === true
+                    ) {
+                        $userGroupsForUser[$userGroup->getId()] = $userGroup;
+                    }
                 }
+                $this->userGroupsForUser = $userGroupsForUser;
+                //error_log(print_r($this->userGroupsForUser, true));
             }
-
-            $this->userGroupsForUser = $userGroupsForUser;
+            TZRedis::set('getUserGroupsForUser_'.$currentUser->ID, serialize($this->userGroupsForUser));
         }
 
         return $this->userGroupsForUser;
-    }  
-
-    // /**
-    //  * Returns the user groups for the user.
-    //  * @return AbstractUserGroup[]|null
-    //  * @throws UserGroupTypeException
-    //  */
-    // public function getUserGroupsForUser(): ?array
-    // {
-    //     if ($this->userHandler->checkUserAccess(UserHandler::MANAGE_USER_GROUPS_CAPABILITY) === true) {
-    //         return $this->getUserGroups();
-    //     }
-    //     $currentUser = $this->wordpress->getCurrentUser();
-        
-    //     if(TZRedis::exists('getUserGroupsForUser_'.$currentUser->ID)) {
-    //         $this->userGroupsForUser  = TZRedis::get('getUserGroupsForUser_'.$currentUser->ID, true);
-    //         //error_log('getUserGroupsForUser_'.$currentUser->ID); 
-    //     } else {
-    //         if ($this->userGroupsForUser === null) {
-    //             $userGroupsForUser = $this->getUserGroupsForObject(
-    //                 ObjectHandler::GENERAL_USER_OBJECT_TYPE,
-    //                 $currentUser->ID
-    //             );
-
-    //             $this->assignDynamicUserGroupsForUser($currentUser, $userGroupsForUser);
-    //             $userGroups = $this->getUserGroups();
-
-    //             foreach ($userGroups as $userGroup) {
-    //                 if (isset($userGroupsForUser[$userGroup->getId()]) === false
-    //                     && $this->checkUserGroupAccess($userGroup) === true
-    //                 ) {
-    //                     $userGroupsForUser[$userGroup->getId()] = $userGroup;
-    //                 }
-    //             }
-    //             $this->userGroupsForUser = $userGroupsForUser;
-    //             //error_log(print_r($this->userGroupsForUser, true));
-    //         }
-    //         TZRedis::set('getUserGroupsForUser_'.$currentUser->ID, serialize($this->userGroupsForUser));
-    //     }
-
-    //     return $this->userGroupsForUser;
-    // }
+    }
 
     /**
      * Returns the user groups for the object filtered by the user user groups.

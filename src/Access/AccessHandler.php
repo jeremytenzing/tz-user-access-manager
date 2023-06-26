@@ -282,10 +282,10 @@ class AccessHandler
         if ($this->userHandler->checkUserAccess(UserHandler::MANAGE_USER_GROUPS_CAPABILITY)) {
             $this->excludedPosts = [];
         }
-
-       // if(TZRedis::exists('getExcludedPosts')) {
-       //     $this->excludedPosts = TZRedis::get('getExcludedPosts', true);
-       // } else {
+        $userId = $this->wordpress->getCurrentUser()->ID;
+        if(TZRedis::exists('getExcludedPosts_'. $userId)) {
+            $this->excludedPosts = TZRedis::get('getExcludedPosts_'.$userId, true);
+        } else {
 
             if ($this->excludedPosts === null) {
                 $noneHiddenPostTypes = $this->getNoneHiddenPostTypes();
@@ -314,8 +314,8 @@ class AccessHandler
                 }
 
                 $this->excludedPosts = $excludedPosts;
-             //   TZRedis::set('getExcludedPosts', serialize($excludedPosts));
-           // }
+                TZRedis::set('getExcludedPosts_'.$userId, serialize($excludedPosts));
+            }
 
         }
 
