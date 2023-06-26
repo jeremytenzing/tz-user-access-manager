@@ -283,9 +283,9 @@ class AccessHandler
             $this->excludedPosts = [];
         }
 
-        if(TZRedis::exists('getExcludedPosts')) {
-            $this->excludedPosts = TZRedis::get('getExcludedPosts', true);
-        } else {
+       // if(TZRedis::exists('getExcludedPosts')) {
+       //     $this->excludedPosts = TZRedis::get('getExcludedPosts', true);
+       // } else {
 
             if ($this->excludedPosts === null) {
                 $noneHiddenPostTypes = $this->getNoneHiddenPostTypes();
@@ -314,8 +314,8 @@ class AccessHandler
                 }
 
                 $this->excludedPosts = $excludedPosts;
-                TZRedis::set('getExcludedPosts', serialize($excludedPosts));
-            }
+             //   TZRedis::set('getExcludedPosts', serialize($excludedPosts));
+           // }
 
         }
 
