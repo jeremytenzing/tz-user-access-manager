@@ -238,9 +238,9 @@ class UserGroupHandler
             return [];
         }
 
-        if(TZRedis::exists('getUserGroupsForObject_'.$objectType."_".$objectId)) {
-            $this->objectUserGroups[$ignoreDates][$objectType][$objectId] = TZRedis::get('getUserGroupsForObject_'.$objectType."_".$objectId, true);
-        } else {
+       // if(TZRedis::exists('getUserGroupsForObject_'.$objectType."_".$objectId)) {
+       //     $this->objectUserGroups[$ignoreDates][$objectType][$objectId] = TZRedis::get('getUserGroupsForObject_'.$objectType."_".$objectId, true);
+       // } else {
             if (isset($this->objectUserGroups[$ignoreDates][$objectType][$objectId]) === false) {
                 $objectUserGroups = [];
                 $userGroups = $this->getFullUserGroups();
@@ -255,8 +255,8 @@ class UserGroupHandler
 
                 $this->objectUserGroups[$ignoreDates][$objectType][$objectId] = $objectUserGroups;
             }
-            TZRedis::set('getUserGroupsForObject_'.$objectType."_".$objectId, serialize($objectUserGroups));
-        }
+         //   TZRedis::set('getUserGroupsForObject_'.$objectType."_".$objectId, serialize($objectUserGroups));
+     //  }
 
         return $this->objectUserGroups[$ignoreDates][$objectType][$objectId];
     }
